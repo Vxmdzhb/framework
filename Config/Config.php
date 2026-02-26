@@ -3,9 +3,11 @@ declare(strict_types=1);
 
 namespace AstrX\Config;
 
-use AstrX\Config\InjectConfig;
 use AstrX\Result\DiagnosticLevel;
 use AstrX\Result\DiagnosticSinkInterface;
+use AstrX\Config\Diagnostic\ConfigNotFoundDiagnostic;
+use AstrX\Config\Diagnostic\ConfigFileInvalidDiagnostic;
+use AstrX\Config\Diagnostic\ConfigSetterInvalidDiagnostic;
 
 final class Config
 {

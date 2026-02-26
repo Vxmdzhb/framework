@@ -5,8 +5,8 @@ namespace AstrX\I18n;
 
 use AstrX\Result\DiagnosticLevel;
 use AstrX\Result\DiagnosticSinkInterface;
-use AstrX\I18n\Diagnostics\MissingTranslationDiagnostic;
-use AstrX\I18n\Diagnostics\InvalidLanguageFileDiagnostic;
+use AstrX\I18n\Diagnostic\MissingTranslationDiagnostic;
+use AstrX\I18n\Diagnostic\InvalidLanguageFileDiagnostic;
 use AstrX\Result\DiagnosticSinkAwareInterface;
 use AstrX\Result\DiagnosticSinkTrait;
 

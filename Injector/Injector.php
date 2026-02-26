@@ -10,6 +10,13 @@ use ReflectionNamedType;
 use AstrX\Result\Diagnostics;
 use AstrX\Result\DiagnosticLevel;
 use AstrX\Result\Result;
+use AstrX\Injector\Diagnostic\ClassNotFoundDiagnostic;
+use AstrX\Injector\Diagnostic\ClassReflectionDiagnostic;
+use AstrX\Injector\Diagnostic\HelperInvalidSignatureDiagnostic;
+use AstrX\Injector\Diagnostic\HelperMethodNotFoundDiagnostic;
+use AstrX\Injector\Diagnostic\HelperReflectionDiagnostic;
+use AstrX\Injector\Diagnostic\MethodNotFoundDiagnostic;
+use AstrX\Injector\Diagnostic\UnresolvableParameterDiagnostic;
 
 final class Injector
 {

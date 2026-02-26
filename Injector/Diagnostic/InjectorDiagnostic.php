@@ -1,7 +1,7 @@
 <?php
 declare(strict_types=1);
 
-namespace AstrX\Injector;
+namespace AstrX\Injector\Diagnostic;
 
 use AstrX\Result\AbstractDiagnostic;
 use AstrX\Result\DiagnosticLevel;

@@ -10,6 +10,11 @@ use AstrX\Result\Result;
 use Throwable;
 use AstrX\Result\DiagnosticSinkAwareInterface;
 use AstrX\Result\DiagnosticSinkTrait;
+use AstrX\Template\Diagnostic\InvalidDereferenceDiagnostic;
+use AstrX\Template\Diagnostic\TemplateEvaluationDiagnostic;
+use AstrX\Template\Diagnostic\TemplateFileNotFoundDiagnostic;
+use AstrX\Template\Diagnostic\TemplateFileReadFailedDiagnostic;
+use AstrX\Template\Diagnostic\UndefinedTokenArgumentDiagnostic;
 
 final class TemplateEngine implements DiagnosticSinkAwareInterface
 {
