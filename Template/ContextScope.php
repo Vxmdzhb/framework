@@ -1,7 +1,7 @@
 <?php
 declare(strict_types=1);
 
-namespace AstrX\Api;
+namespace AstrX\Template;
 
 /**
  * Declares the visibility scope of a value set on the template context.

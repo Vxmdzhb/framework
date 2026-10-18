@@ -2,7 +2,7 @@
 
 declare(strict_types = 1);
 
-namespace AstrX\Controller;
+namespace AstrX\Kernel;
 
 use AstrX\Http\Request;
 use AstrX\Http\Response;
