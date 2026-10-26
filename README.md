@@ -1,6 +1,6 @@
 # astrx/framework
 
-The foundation of [AstrX](https://github.com/hydrastro/astrx), a framework for
+The foundation of [AstrX](https://github.com/Vxmdzhb/astrx), a framework for
 server-rendered sites that work without JavaScript:
 
 - **Result** — typed results and diagnostics (`Result<T>`, `DiagnosticsCollector`).
@@ -16,13 +16,29 @@ server-rendered sites that work without JavaScript:
 It depends on no other package. `resources/` holds its diagnostic messages
 (en, it) and its default configuration.
 
-```sh
-composer require astrx/framework
-```
-
-`examples/minimal` in the main repository is an application built on this
-package alone. The [architecture guide](https://github.com/hydrastro/astrx/blob/master/docs/architecture.md)
+`examples/minimal` in the [AstrX repository](https://github.com/Vxmdzhb/astrx) is an application built on this
+package alone. The [architecture guide](https://github.com/Vxmdzhb/astrx/blob/main/docs/architecture.md)
 describes the layers.
 
-Development happens in the [main repository](https://github.com/hydrastro/astrx);
-this package is published from its `packages/framework` directory.
+AstrX isn't on Packagist and doesn't tag versions: you install from each
+repository's `main`, and your `composer.lock` pins the exact commit. Tell
+Composer where to find the package:
+
+```json
+{
+    "minimum-stability": "dev",
+    "prefer-stable": true,
+    "repositories": [
+        { "type": "vcs", "url": "https://github.com/Vxmdzhb/framework" }
+    ]
+}
+```
+
+Then:
+
+```sh
+composer require astrx/framework:dev-main
+```
+
+Issues and pull requests are welcome here. [AstrX](https://github.com/Vxmdzhb/astrx)
+is the site that puts all the packages together.
