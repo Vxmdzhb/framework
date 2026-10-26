@@ -87,13 +87,12 @@ final class ModuleLoader
 
     /**
      * Config directory override, used when resolving which file declares a
-     * section. Same existence guard, and for the same reason: pointed at a
-     * directory that isn't there, every section lookup would come back empty and
-     * every class would silently run on hardcoded defaults.
+     * section. Same existence check, for the same reason: pointed at a missing
+     * directory, every lookup would come back empty and every class would run on
+     * its hardcoded defaults.
      *
-     * Note this cannot relocate the config directory as a whole — the file that
-     * declares this key is itself found in the application's config directory
-     * (Paths::$config). It retargets section resolution only.
+     * This retargets section resolution only. The file that declares this key is
+     * itself found in the application's config directory (Paths::$config).
      */
     #[InjectConfig('config_dir')]
     public function setConfigDir(string $dir): void
@@ -158,12 +157,10 @@ final class ModuleLoader
         // section already matches their name.
         $candidates = $this->domains->forClass($fqcn);
 
-        // EVERY file first, THEN every section. A class's own section usually
-        // lives in the PARENT's file (section 'ImapClient' is declared in
-        // Mail.config.php), so applying section N before file N+1 has been
-        // loaded would find nothing there and silently leave the instance on its
-        // hardcoded defaults — for ImapClient that is "no SOCKS5 proxy", i.e.
-        // IMAP off Tor.
+        // Load every file first, then apply every section. A class's section often
+        // lives in its parent's file (section 'ImapClient' is declared in
+        // Mail.config.php), so applying sections file by file would miss it and leave
+        // the instance on its defaults (for ImapClient: no SOCKS5 proxy, so no Tor).
         foreach ($candidates as $candidate) {
             $this->config->loadModuleConfig($candidate['file']);
         }
@@ -203,8 +200,7 @@ final class ModuleLoader
             }
         }
 
-        // Wire translator if the instance opts in via TranslatorAwareInterface.
-        // This replaces the previously dead TranslatorAwareInterface.
+        // Wire the translator into instances that implement TranslatorAwareInterface.
         if ($instance instanceof TranslatorAwareInterface) {
             $instance->setTranslator($this->translator);
         }

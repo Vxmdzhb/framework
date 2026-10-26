@@ -11,7 +11,7 @@ namespace AstrX\Session;
 final class PrgHandler extends AbstractPrgHandler
 {
     private const string POST_PREFIX = 'POST_';
-    /** Parallel per-token creation timestamp, so payloads can be aged out (R3-27). */
+    /** Parallel per-token creation timestamp, so payloads can be aged out. */
     private const string POST_META_PREFIX = 'POST_META_';
     private const string TARGET_PREFIX = 'PRG_TARGET_';
     private const string TOKEN_QUERY_KEY = '_prg';

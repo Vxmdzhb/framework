@@ -60,17 +60,9 @@ final class Config
             $this->configuration = $loaded;
         }
 
-        // There used to be a register_shutdown_function() here that swept every
-        // loaded domain for unused keys. It could not work, for two independent
-        // reasons: it ran at script end, while its only consumer
-        // (DefaultTemplateContext) renders diagnostics mid-page — so everything
-        // it emitted went into a collector nobody read again — and it iterated a
-        // set keyed by FILE base name, which for 25 of the 38 sections is not a
-        // section name at all (loading Mail.config.php recorded 'Mail', so the
-        // sweep looked up an empty array and checked nothing). Unused-key
-        // detection now happens where it can be acted on: ModuleLoader emits it
-        // mid-request for #[InjectConfig] classes, and tools/check_config.php
-        // does the exhaustive sweep in CI with every consumer in view.
+        // Unused keys are reported where someone can act on them: ModuleLoader emits
+        // them mid-request for #[InjectConfig] classes, and tools/check_config.php
+        // checks everything in CI.
     }
 
     public function getConfig(string $domain, string $key, mixed $fallback = null): mixed
@@ -81,15 +73,11 @@ final class Config
         }
 
         if ($fallback !== null) {
-            // A read that silently falls back is how a typo'd key, or a whole
-            // section nobody ever created, stays invisible forever: every
-            // getConfigBool/Int/String/Array supplies a default, so before this
-            // the ONLY unmatched read that said anything was one with no default
-            // at all. DEBUG, not WARNING: several of these are legitimate
-            // "optional section" reads that would otherwise put a permanent
-            // banner on every admin page. Below the default NOTICE threshold, so
-            // an operator sees them by lowering the diagnostics level, and CI
-            // sees all of them at once via tools/check_config.php.
+            // Report reads that fall back to their default, so a mistyped key or a
+            // missing section doesn't go unnoticed. DEBUG rather than WARNING: some are
+            // legitimate reads of optional sections, and they shouldn't put a banner on
+            // every admin page. Lower the diagnostics level to see them here;
+            // tools/check_config.php lists all of them.
             $this->sink->emit(new ConfigNotFoundDiagnostic(
                                   id:             'astrx.config/get_config.defaulted',
                                   level:          DiagnosticLevel::DEBUG,
@@ -112,13 +100,12 @@ final class Config
 
     /**
      * Load the config file {Domain}.config.php: each installed module's copy
-     * (its defaults) first, then the site's copy, merged per section
-     * KEY BY KEY — so the site file only needs the keys it changes, and a key a
-     * module adds later still reaches a site whose file predates it.
+     * (its defaults) first, then the site's copy, merged per section key by key.
+     * The site file only needs the keys it changes, and keys a module adds later
+     * still reach a site whose file is older.
      *
-     * Every section the file declares replaces the in-memory section of that
-     * name wholesale, exactly as one file used to: reloading after an admin
-     * save picks up removed keys too.
+     * Each section a file declares replaces the in-memory section of that name,
+     * so reloading after an admin save picks up removed keys too.
      */
     public function loadModuleConfig(string $domain): void
     {
@@ -222,16 +209,10 @@ final class Config
     /**
      * A config flag, read strictly.
      *
-     * The old body was `is_bool($v) ? $v : (bool)$v`, i.e. a plain truthy cast.
-     * Every non-empty string is truthy in PHP, so `'false'` and `'off'` both
-     * came back TRUE — the exact opposite of what the file says. That is not
-     * theoretical here: ModuleRegistry::enabled() rides on this method, so a
-     * hand-edited `'chat' => 'false'` in Modules.config.php left the chat module
-     * fully enabled while every human reading the file believed it was off.
-     *
-     * So: real booleans pass through; the unambiguous textual and 0/1 spellings
-     * are parsed the way they read; anything else is a config error — reported,
-     * and resolved to $default rather than to "not empty".
+     * Real booleans pass through, and the unambiguous spellings ('true'/'false',
+     * 'yes'/'no', 'on'/'off', 0/1) are read the way they read. Anything else is
+     * reported as a config error and $default is returned. A plain (bool) cast
+     * would turn 'false' into true, and ModuleRegistry::enabled() relies on this.
      */
     public function getConfigBool(string $domain, string $key, bool $default = false): bool
     {

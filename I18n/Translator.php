@@ -143,8 +143,8 @@ final class Translator
             return;
         }
 
-        // Load all valid entries; skip and report bad ones individually so that
-        // valid translations before a bad entry are not silently discarded.
+        // Load every valid entry; skip and report bad ones one by one, so a bad
+        // entry doesn't take the valid ones before it down with it.
         $clean = [];
 
         foreach ($data as $k => $v) {

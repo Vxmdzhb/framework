@@ -210,7 +210,7 @@ final class Injector
             ));
         }
 
-        // Cycle guard (R4-15): getClass() resolves a not-yet-shared class by
+        // Cycle guard: getClass() resolves a not-yet-shared class by
         // recursing into createClass(), so mutual constructor deps (A needs B,
         // B needs A) would recurse until a stack-overflow fatal. Track classes
         // currently mid-construction and return a clean error Result on a
@@ -237,10 +237,8 @@ final class Injector
                     $argName = $parameter->getName();
                     $arg     = $this->getClassArg($className, $argName);
 
-                    // Key by parameter NAME so PHP unpacks these as named
-                    // arguments (R4-15): a skipped optional parameter no longer
-                    // shifts a later provided/resolved argument into the wrong
-                    // positional slot.
+                    // Key by parameter name so PHP passes these as named arguments: a skipped
+                    // optional parameter can't shift a later argument into the wrong slot.
                     if ($arg !== null) {
                         $dependencies[$argName] = $arg;
                         continue;

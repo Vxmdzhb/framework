@@ -134,19 +134,12 @@ final class ErrorHandler
     }
 
     /**
-     * Record a PHP error. RECORDING IS NOT ESCALATING.
+     * Record a PHP error. Recording is not escalating.
      *
      * Every error that passes the mask goes to the diagnostic sink. Only the
-     * levels in FATAL_TYPES additionally join $fatals, which is what turns the
-     * response into a 500 with an error body.
-     *
-     * The production mask is E_ALL & ~E_NOTICE, so E_WARNING passes it. This
-     * method used to put every such error into the one list the shutdown handler
-     * escalated, which meant ANY warning replaced a perfectly good 200 with
-     * "<h1>Internal Server Error</h1>" appended to the already-flushed body. The
-     * concrete case: an email attachment whose content_type contains a newline
-     * makes PHP refuse the header with an E_WARNING, and the victim's downloaded
-     * file arrived with an HTML error block glued to the end of it.
+     * levels in FATAL_TYPES also join $fatals, which turns the response into a
+     * 500. The production mask lets E_WARNING through, and a warning must never
+     * replace a good response (or corrupt a download) with an error page.
      */
     public function errorHandler(int $errno, string $errstr, string $errfile, int $errline): bool
     {
@@ -242,8 +235,8 @@ final class ErrorHandler
             return;
         }
 
-        // Only show raw debug output in dev/test environments.
-        // In production/staging, render a generic error page or fail silently.
+        // Raw debug output only in development and testing. In production and
+        // staging, show the generic error page.
         if ($this->env->isDevLike()) {
             echo "<body bgcolor='black' text='white'></body><h1>Error</h1><pre>";
             print_r($this->recorded);

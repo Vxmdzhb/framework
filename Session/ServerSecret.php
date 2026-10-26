@@ -7,29 +7,26 @@ use AstrX\Config\InjectConfig;
 use AstrX\Support\Paths;
 
 /**
- * The install's server secret — one job: produce a stable secret for this
- * installation, or fail loudly.
+ * The installation's server secret: a stable secret for this install, or a
+ * loud failure.
  *
- * Every keyed-at-rest construct in AstrX derives from this value:
- *   - SecureSessionHandler's HKDF encryption + MAC keys,
- *   - the identicon seed HMAC (so a fallback avatar cannot be recomputed from a
- *     guessed recovery address),
- *   - the TOTP-secret envelope in UserService.
+ * Everything AstrX keys at rest derives from it:
+ *   - SecureSessionHandler's HKDF encryption and MAC keys;
+ *   - the identicon seed HMAC (so a fallback avatar can't be recomputed from
+ *     a guessed address);
+ *   - the TOTP secret envelope in UserService.
  *
  * Resolution order:
- *   1. Session.config.php `server_secret`, unless it is the value that was once
- *      committed to the public repository (see LEAKED_SERVER_SECRET).
- *   2. A per-install file, generated on first run. Candidates are ordered
- *      most-durable first (config dir) then most-reliably-writable (temp dir);
- *      under Docker the bind-mounted config dir is often not writable by
- *      www-data.
- *   3. Nothing → throw.
+ *   1. Session.config.php `server_secret`, unless it's the publicly known
+ *      value (see LEAKED_SERVER_SECRET).
+ *   2. A per-install file, generated on first run. The config dir is tried
+ *      first (most durable), then the temp dir (most reliably writable; under
+ *      Docker the config dir often isn't writable by www-data).
+ *   3. Nothing: throw.
  *
- * Step 3 is the point of this class. The code it replaces returned a FRESH
- * random 32 bytes per request in that case: every session then decrypted to
- * empty, so every POST — login included — became a CSRF 400, and the operator
- * saw a site that silently refused all logins with nothing in the logs. A
- * RuntimeException naming the remedy is a strictly better failure.
+ * Throwing matters. A random key per request would make every session
+ * unreadable, so every POST, login included, would fail its CSRF check with
+ * nothing in the logs.
  */
 final class ServerSecret
 {
@@ -37,11 +34,9 @@ final class ServerSecret
     public function __construct(private readonly Paths $paths) {}
 
     /**
-     * The server_secret value that was, for a time, committed to the public
-     * repository in Session.config.php. It is therefore no longer secret. If an
-     * install still carries this exact value (e.g. copied from an old checkout),
-     * we IGNORE it and fall through to the per-install generated fallback so a
-     * site can never run on a globally-known key.
+     * A server_secret value that was once committed to the public repository,
+     * so it is not secret. An install that still has it is treated as having no
+     * secret configured, and gets a generated one.
      */
     public const string LEAKED_SERVER_SECRET =
         '2cadc3c3e1e0509c705e758f02e9d39c27446c2a509bc828b5ddbd6af4026ec4';
@@ -71,11 +66,10 @@ final class ServerSecret
     #[InjectConfig('server_secret')]
     public function setConfigured(string $secret): void
     {
-        // A configured value that arrives AFTER the secret was already handed
-        // out would silently re-key mid-request: sessions written earlier in the
-        // request could not be read later in it. Config setters run at
-        // construction, long before the first bytes() call, so this only fires
-        // on a wiring mistake — keep the already-resolved value.
+        // A configured value arriving after the secret was handed out would re-key
+        // in the middle of a request. Config setters run at construction, long
+        // before the first bytes() call, so this only happens through a wiring
+        // mistake; keep the value already resolved.
         if ($this->resolved !== null) {
             return;
         }
@@ -93,9 +87,8 @@ final class ServerSecret
             return $this->resolved;
         }
 
-        // 1. Explicit admin-configured secret (recommended). The old leaked/
-        //    committed value is ignored — treated as unset — so no site ever runs
-        //    on a globally-known key. hash_equals for constant-time comparison.
+        // 1. The secret configured by the admin (recommended). The publicly known
+        //    value counts as unset. hash_equals for a constant-time comparison.
         if ($this->configured !== ''
             && !hash_equals(self::LEAKED_SERVER_SECRET, $this->configured)
         ) {

@@ -221,7 +221,7 @@ final class TemplateEngine implements DiagnosticSinkAwareInterface
      * "Array to string conversion" — a forced 500 in dev/test, and a hard error
      * for an object lacking __toString even in production. Degrades to '' so a
      * single bad binding never takes down the page. Scalars keep their exact
-     * prior stringification (bool true→"1", false→"") (F-11).
+     * prior stringification (bool true→"1", false→"").
      */
     public function stringify(mixed $value): string
     {
@@ -348,19 +348,12 @@ final class TemplateEngine implements DiagnosticSinkAwareInterface
         } else {
             // PARSE_MODE_PLAIN: emit the file's bytes with no token pass.
             //
-            // $templateFile — the SAME path checked with file_exists() and
-            // confirmed inside the template dir by the realpath() test above.
-            // This branch used to build its own path with a hardcoded '.php'
-            // while the check used $templateExtension, so on a stock install it
-            // verified `main.html` and then read `main.php`: file_get_contents
-            // failed, render() returned "", and every page answered 200 with an
-            // empty body — no error, no diagnostic.
+            // $templateFile is the same path checked with file_exists() and confirmed
+            // inside the template dir by the realpath() test above.
             //
-            // var_export(), not a double-quoted literal: this string is eval'd,
-            // and template_dir comes straight from the admin System-config form.
-            // A dir containing $ or " (or "; system('…'); //) was interpolated
-            // into the generated source — admin-write turned into code execution.
-            // Every other codegen path here already var_export()s its literals.
+            // var_export(), not a double-quoted literal: this string is eval'd, and
+            // template_dir comes from the admin System-config form, so it must never be
+            // interpolated into code. Every other codegen path here does the same.
             $fileLiteral = var_export($templateFile, true);
             $code = '<?php class ' . $className
                     . '{private $TemplateEngine;function __construct($TemplateEngine){$this->TemplateEngine=$TemplateEngine;}'
@@ -775,7 +768,7 @@ final class TemplateEngine implements DiagnosticSinkAwareInterface
                     // stringify() instead of a raw (string) cast: a non-scalar
                     // binding (array/object) reaching {{var}} would otherwise raise
                     // "Array to string conversion" — a forced 500 in dev/test — so
-                    // one bad binding must not take down the whole page (F-11).
+                    // one bad binding must not take down the whole page.
                     $code .= '$buffer.=htmlspecialchars($this->TemplateEngine->stringify(' . $valueExpr
                              . '), ENT_QUOTES | ENT_SUBSTITUTE | ENT_HTML5, \'UTF-8\');';
                     break;

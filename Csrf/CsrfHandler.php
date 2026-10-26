@@ -76,9 +76,8 @@ final class CsrfHandler
 
     /**
      * Generate a fresh CSRF token for the given form, store it in the session,
-     * and return the hex string to be embedded in the form.
-     * Calling generate() a second time for the same formId replaces the
-     * previous token — the old one is silently invalidated.
+     * and return the hex string to embed in the form. Calling it again for the
+     * same form replaces (and so invalidates) the previous token.
      */
     public function generate(string $formId)
     : string {

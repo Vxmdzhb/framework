@@ -323,8 +323,8 @@ final class ModuleRegistry
 
     /**
      * Instantiate, validate and normalise the manifests of $modules, sorted by
-     * key. Throws on a class that is not a Module or a duplicate key: a broken
-     * module list must fail loudly, not run with a module silently missing.
+     * key. A class that is not a Module, or a duplicate key, throws: a broken
+     * module list must fail loudly.
      *
      * @param list<string> $modules
      * @return list<Manifest>

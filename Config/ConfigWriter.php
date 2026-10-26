@@ -9,25 +9,16 @@ use AstrX\Result\Result;
 use AstrX\Result\DiagnosticLevel;
 
 /**
- * Writes a config domain array back to its PHP config file atomically.
+ * Writes a config domain back to its PHP file, atomically.
  *
- * Write strategy:
- *   1. Serialise using a recursive pretty-printer that emits short array syntax [].
+ *   1. Serialise with a recursive pretty-printer that emits short array
+ *      syntax. (var_export() emits array() and can't be fixed up reliably.)
  *   2. Write to a sibling .tmp file.
- *   3. rename() into place (atomic on POSIX).
+ *   3. rename() it into place.
  *
- * We do NOT use var_export() + regex because var_export emits old-style array()
- * syntax and a naive regex conversion breaks the outer closing delimiter.
- * The recursive printer below produces correct PHP in all cases.
- *
- * Section routing: a section is written to the file that CURRENTLY DECLARES it,
- * not to the file name the caller passed. Section and file name differ for 25 of
- * the 38 declared sections (section `ImapClient` lives in `Mail.config.php`), and
- * that convention used to be re-derived by hand at every save handler. The
- * webmail editor got it wrong and persisted `ImapClient` to `Imap.config.php` —
- * a file nothing loads — so every IMAP setting, including the SOCKS5 host/port
- * that routes IMAP through Tor, was write-only. Routing through
- * {@see ConfigDomainResolver} makes reader and writer read the same layout.
+ * A section is written to the file that currently declares it, whatever file
+ * name the caller passed, using the same {@see ConfigDomainResolver} the
+ * reading side uses.
  */
 final class ConfigWriter
 {
@@ -103,14 +94,11 @@ final class ConfigWriter
             )));
         }
         if ($merge) {
-            // Merge the incoming section(s)/key(s) OVER the existing file rather than
-            // replacing it wholesale. Many admin save-handlers rebuild only the keys
-            // that have a form field, so a full replace silently DROPS every other key
-            // in the section — e.g. the imageboard tripcode_salt/poster_id_salt
-            // (→ forgeable tripcodes, predictable poster IDs) or the session
-            // server_secret / regenerate_interval (→ session-fixation defence off).
-            // Shallow per-section key merge: new keys win, keys the handler omitted
-            // are preserved, and whole untouched sections are kept intact.
+            // Merge the incoming sections and keys over the existing file rather than
+            // replacing it. Many save handlers rebuild only the keys that have a form
+            // field; a full replace would drop the rest, including secrets like the
+            // imageboard salts or the session server_secret. Per-section, shallow: new
+            // keys win, omitted keys stay, untouched sections are kept as they are.
             $existing = is_file($path) ? @include $path : null;
             if (is_array($existing)) {
                 /** @var array<string, mixed> $existing */
@@ -215,7 +203,7 @@ final class ConfigWriter
         if (is_float($value)) {
             // Keep a float a float on round-trip: an integer-valued float (1.0)
             // must NOT serialize to "1" (which reloads as int and breaks is_float/
-            // === checks). Ensure a decimal point survives (F-22).
+            // === checks). Ensure a decimal point survives.
             $s = rtrim(rtrim(sprintf('%F', $value), '0'), '.');
             if ($s === '' || $s === '-') { $s = '0'; }
             return str_contains($s, '.') ? $s : $s . '.0';

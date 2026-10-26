@@ -14,38 +14,30 @@ use AstrX\Support\ResourceRoots;
 /**
  * Reads and writes the flat translation catalogs under resources/lang/<locale>/.
  *
- * Backs the admin Language editor: browse a domain's keys, edit every locale's
- * string side by side, save; and add a whole new language (a new locale) by
- * cloning an existing one. Also supplies the full key list to the comments
- * antispam message picker.
+ * Backs the admin Language editor: browse a domain's keys, edit every
+ * locale's string side by side, save, and add a new language by cloning an
+ * existing one. Also gives the comment antispam message picker its key list.
  *
- * Only the TOP-LEVEL domains (Admin, Comment, Content, …) are exposed for
- * editing — the nested Diagnostics/ catalogs are developer-facing and stay out
- * of the editor, but they ARE cloned when a language is added so the new locale
- * is complete from day one.
+ * Only top-level domains (Admin, Comment, Content, …) are editable. The
+ * Diagnostics/ catalogs are for developers and stay out of the editor, but
+ * they are cloned with a new language so it is complete from the start.
  *
- * Locales are plain strings validated against available_languages in the app
- * config (ContentManager resolves the request locale that way — no fixed enum),
- * so a language added here works on the next request once the admin page also
- * registers it in the config.
+ * Locales are plain strings checked against available_languages in the app
+ * config, so a language added here works on the next request once the admin
+ * page has also registered it there.
  *
- * Write strategy mirrors ConfigWriter: serialise to a sibling .tmp file,
- * rename() into place (atomic on POSIX), opcache_invalidate(). Values are
- * single-quoted PHP strings with addcslashes() escaping.
+ * Writes work like ConfigWriter's: a sibling .tmp file, rename(), then
+ * opcache_invalidate(). Values are single-quoted PHP strings escaped with
+ * addcslashes().
  *
- * MODULE CATALOGS: installed modules ship their own lang/ directories (see
- * ResourceRoots). The editor shows each domain merged the way the Translator
- * loads it — module files first, the site's on top — and always WRITES to the
- * site's directory: a module's files are read-only (under vendor/ once modules
- * are packages). For a domain a module ships, only the keys whose text differs
- * from the module's are written, so the site file holds just the overrides and
- * keys the module adds later still show up.
+ * Installed modules ship their own lang/ directories (see ResourceRoots). The
+ * editor shows each domain merged the way the Translator loads it, module
+ * files first and the site's on top, and always writes to the site's
+ * directory, since a module's files are read-only. For a domain a module
+ * ships, only keys whose text differs from the module's are written.
  *
- * SAFETY: a domain whose catalog holds a non-string value (a callable entry,
- * which the Translator also accepts) is reported non-editable — a closure
- * cannot be re-serialised to source, so saving would silently drop it. Such a
- * domain is shown read-only rather than corrupted. No top-level catalog ships
- * closures today; this guards a future one.
+ * A domain whose catalog holds a non-string value (a callable) is shown
+ * read-only: a closure can't be written back to source.
  */
 final class LangCatalog
 {

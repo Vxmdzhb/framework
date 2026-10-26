@@ -196,8 +196,8 @@ abstract class AbstractPrgHandler
     }
 
     /**
-     * Sweep abandoned PRG POST payloads and the upload temp files they hold
-     * (R3-27). A payload is stored on submit and consumed by pull() on the
+     * Sweep abandoned PRG POST payloads and the upload temp files they hold.
+     * A payload is stored on submit and consumed by pull() on the
      * settling GET; if the user abandons the redirect (or it fails validation
      * and is never pulled), the payload — and any upload files ContentManager
      * moved into the system temp dir and recorded under __files__ (Site\PrgIntake) — would linger

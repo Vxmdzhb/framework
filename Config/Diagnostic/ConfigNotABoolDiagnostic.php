@@ -8,15 +8,10 @@ use AstrX\Result\AbstractDiagnostic;
 use AstrX\Result\DiagnosticLevel;
 
 /**
- * Emitted when a config key read as a flag holds something that is not a
- * boolean and not one of the unambiguous spellings of one ('true'/'false',
- * 'yes'/'no', 'on'/'off', 0/1).
- *
- * Config::getConfigBool() used to answer such a value with a plain `(bool)`
- * cast, which makes every non-empty string TRUE — so `'chat' => 'false'` in
- * Modules.config.php read back as "chat is enabled", and the operator who wrote
- * it had no way to find out. The value is now rejected, the caller's default
- * stands, and this says which key needs fixing.
+ * Emitted when a config key read as a flag holds something that is neither a
+ * boolean nor one of its unambiguous spellings ('true'/'false', 'yes'/'no',
+ * 'on'/'off', 0/1). The caller's default is used, and this says which key
+ * needs fixing.
  */
 final class ConfigNotABoolDiagnostic extends AbstractDiagnostic
 {

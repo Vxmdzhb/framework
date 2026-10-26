@@ -60,7 +60,7 @@ final class UrlGenerator
         [$urlRewrite, $basePath, $localeKey, $pageKey, $entryPoint, $locale, $sessionKey, $sid] =
             $this->routingConfig();
 
-        // R12: callers that build a URL destined to leave the origin (e.g. a link
+        // Callers that build a URL destined to leave the origin (e.g. a link
         // emailed to a clearnet inbox) pass includeSid:false so the cookieless
         // session id is never serialized into it (a hijack vector — see
         // EmailService::buildTokenLink and the sitemap/feed sid-free policy).

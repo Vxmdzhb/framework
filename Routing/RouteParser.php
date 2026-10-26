@@ -82,14 +82,10 @@ final class RouteParser
             $localeFromUrl = ($a !== null && in_array($a, $this->availableLocales, true));
             $locale        = ($localeFromUrl && $a !== null) ? $a : $this->defaultLocale;
 
-            // Only consume a SECOND segment when the first one was the locale.
-            // With no locale prefix, $a IS the page token and every remaining
-            // segment (login, page number, sort, …) must stay on the stack so
-            // setTail() below can see it. The old code popped $b unconditionally
-            // and then reassigned $b = $a, silently discarding the segment after
-            // the page token on locale-less URLs — e.g. /user/login resolved to
-            // page 'user' with an empty tail (login lost); /main/2 lost its page
-            // number (R3-19).
+            // Only take a second segment when the first one was the locale. Without a
+            // locale prefix, $a is the page token and every remaining segment (login,
+            // page number, sort, …) must stay on the stack for setTail() below. Otherwise
+            // /user/login would lose "login" and /main/2 its page number.
             if ($localeFromUrl) {
                 $b = $stack->pop();
             } else {

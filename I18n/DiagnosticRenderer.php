@@ -182,10 +182,10 @@ final class DiagnosticRenderer
     /**
      * Render all diagnostics at or above $minLevel, paired with their level.
      *
-     * When $checker is provided:
-     *   - The effective level (possibly overridden in DB) is used for the
-     *     minLevel comparison instead of the class-declared level.
-     *   - Diagnostics the current user may not see are silently skipped.
+     * With a $checker:
+     *   - the effective level (possibly overridden in the database) is compared
+     *     with minLevel instead of the class's own level;
+     *   - diagnostics the current user may not see are skipped.
      *
      * @return list<array{message:string, level:DiagnosticLevel, level_label:string}>
      */

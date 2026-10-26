@@ -12,10 +12,10 @@ use AstrX\Config\InjectConfig;
 /**
  * Database-backed, optionally encrypted session handler.
  *
- * Encryption scheme: AES-256-CTR with a per-session HMAC-SHA256 authentication
- * tag prepended to the ciphertext so tampering is detected on read.
+ * Encryption: AES-256-CTR with a per-session HMAC-SHA256 tag in front of the
+ * ciphertext, so tampering is detected on read.
  *
- * Table schema expected:
+ * Expected table:
  *   CREATE TABLE `session` (
  *       `id`          VARCHAR(128) NOT NULL PRIMARY KEY,
  *       `timestamp`   INT UNSIGNED NOT NULL,
@@ -24,16 +24,15 @@ use AstrX\Config\InjectConfig;
  *       `replace_at`  INT UNSIGNED NULL DEFAULT NULL
  *   );
  *
- * replaced_by = hashed ID of the successor session (set on regeneration).
- * replace_at  = Unix timestamp when regeneration occurred.
- * Both columns support the grace-period handover window.
+ * replaced_by is the hashed id of the successor session (set when the id is
+ * regenerated) and replace_at the time that happened; together they give
+ * in-flight requests a grace period.
  *
- * Liveness: rotation keeps the OLD row alive on purpose (in-flight Tor requests
- * may still carry the previous id), so "does the row exist" is NOT the same
- * question as "is this session still valid". rowIsLive() is the single answer;
- * validateId() admits with it, read() enforces with it, gc() deletes by its SQL
- * mirror. Any new code path that decides a session is dead belongs there too,
- * not in a fourth private rule.
+ * Rotation keeps the old row on purpose (in-flight Tor requests may still
+ * carry the old id), so "the row exists" doesn't mean "the session is valid".
+ * rowIsLive() is the one answer: validateId() admits with it, read() enforces
+ * it, gc() deletes by its SQL mirror. Any new rule about dead sessions
+ * belongs there.
  */
 final class SecureSessionHandler implements
     SessionHandlerInterface,
@@ -156,25 +155,14 @@ final class SecureSessionHandler implements
         $stmt->execute(['cutoff' => $now - $maxLifetime]);
         $deleted = $stmt->rowCount();
 
-        // The SQL mirror of rowIsLive()'s handover rule: DELETE the rotated-away
-        // rows whose grace window has closed.
+        // The SQL mirror of rowIsLive()'s handover rule: delete rotated-away rows
+        // whose grace window has closed. Only deleting is correct: the old row holds
+        // the authenticated session (session_regenerate_id(false) writes it there),
+        // and clearing replace_at instead would make it a live session again.
         //
-        // This statement used to `SET replaced_by = NULL, replace_at = NULL`
-        // instead — and that UN-ROTATED the session. Rotation keeps the old row
-        // alive (session_regenerate_id(false) even writes the current,
-        // AUTHENTICATED $_SESSION into it), and the ONLY thing that ever killed
-        // it was read()'s replace_at check. Clearing replace_at removed the
-        // evidence: read() then took the row as an ordinary live session and
-        // served the post-login snapshot to whoever still held the old id, while
-        // every use refreshed `timestamp` so inactivity GC never reached it
-        // either. On the shipped php.ini (gc_probability=1, gc_divisor=1000,
-        // gc_maxlifetime=1440) that resurrected a rotated-away id for roughly
-        // 1410 s per rotation. Deleting is the only correct action here.
-        //
-        // Wrapped so a `session` table WITHOUT the optional handover columns
-        // (a legacy install that hasn't migrated) doesn't throw an uncaught
-        // PDOException when GC fires — the row DELETE above already ran and is
-        // what matters.
+        // Wrapped so a `session` table without the handover columns (an install that
+        // hasn't migrated) doesn't throw when GC runs. The row DELETE above is what
+        // matters.
         try {
             $stmt2 = $this->pdo->prepare(
                 'DELETE FROM `session`
@@ -194,10 +182,9 @@ final class SecureSessionHandler implements
     {
         $row = $this->readRow($this->hashId($id));
 
-        // ── Handover lookup (grace-period support) ────────────────────────
-        // If the session row is missing, check whether it was recently replaced
-        // (i.e. the session ID was regenerated and the old row now has a
-        // replaced_by pointer).  Follow at most one hop to avoid infinite loops.
+        // ── Handover lookup (grace period) ──────────────────────────────────
+        // If the row is missing, check whether the id was recently regenerated (the
+        // old row has a replaced_by pointer). Follow at most one hop.
         if ($row === false) {
             return '';
         }
@@ -217,15 +204,12 @@ final class SecureSessionHandler implements
         $replaceAt  = $this->replaceAtOf($row);
 
         if ($replacedBy !== null && $replaceAt !== null && !$this->encrypt) {
-            // Grace-period handover: a request still carrying the OLD id is served
-            // the successor row. This is only sound when sessions are NOT
-            // encrypted — the successor's data is encrypted under the NEW raw
-            // session id, and replaced_by holds only its SHA-512 hash, so we
-            // cannot derive the key to decrypt it here (doing so returned an empty
-            // session, silently logging out in-flight requests during regen). In
-            // encrypted mode the OLD row's OWN data is already the current
-            // post-regeneration snapshot (session_regenerate_id copies $_SESSION)
-            // and IS decryptable with the old id, so we fall through to serve it.
+            // A request still carrying the old id is served the successor's row. That
+            // only works unencrypted: the successor's data is encrypted under the new
+            // raw id, and replaced_by holds only its hash, so it can't be decrypted
+            // here. In encrypted mode the old row already holds the current data
+            // (session_regenerate_id copies $_SESSION) and is readable with the old id,
+            // so we fall through and serve that.
             $successor = $this->readRow($replacedBy);
             if ($successor !== false) {
                 $row = $successor;
@@ -307,10 +291,7 @@ final class SecureSessionHandler implements
             return false;
         }
 
-        // Row EXISTENCE is not liveness. The old `SELECT 1` accepted any row,
-        // including a rotated-away one whose grace window had long closed —
-        // admission said yes while read() said no, and gc() had a third opinion.
-        // rowIsLive() is the single rule all three now consult.
+        // A row existing doesn't make it live; rowIsLive() is the shared rule.
         $row = $this->readRow($hashedId);
         if ($row === false) {
             return false;
@@ -329,20 +310,14 @@ final class SecureSessionHandler implements
     // -------------------------------------------------------------------------
 
     /**
-     * THE liveness rule for a session row, consulted by validateId()
-     * (admission), read() (enforcement) and mirrored in SQL by gc() (cleanup).
+     * The liveness rule for a session row, used by validateId() (admission) and
+     * read() (enforcement), and mirrored in SQL by gc() (cleanup). All three must
+     * agree.
      *
-     * Before this existed the three disagreed, and the disagreement was
-     * exploitable: validateId() checked only that the row existed, read()
-     * checked the grace window, and gc() erased the very column read() checked.
-     *
-     * Scope note — INACTIVITY is deliberately NOT part of this predicate. PHP's
-     * session.gc_maxlifetime is probabilistic by design (it is only applied when
-     * gc_probability/gc_divisor fires), so enforcing it on every read would sign
-     * every user out after 1440 idle seconds on the shipped php.ini: a
-     * behaviour change, not a fix. gc() remains the sole consumer of the
-     * inactivity bound, with $maxLifetime supplied by PHP. The handover bound
-     * below is the rule all three share.
+     * Inactivity is deliberately not part of it. PHP applies
+     * session.gc_maxlifetime only when garbage collection happens to run, so
+     * enforcing it on every read would log everyone out after 1440 idle seconds.
+     * gc() alone applies the inactivity bound, with the lifetime PHP supplies.
      *
      * @param array<string,mixed> $row
      */
@@ -350,24 +325,20 @@ final class SecureSessionHandler implements
     {
         $replaceAt = $this->replaceAtOf($row);
 
-        // A rotated-away row is valid only inside the grace window. Its
-        // `timestamp` is refreshed on every use, so inactivity GC can never
-        // reap it; without this bound a captured old sid stays valid forever and
-        // rotation buys nothing. The legitimate client already moved to the
-        // successor id via Set-Cookie, so only stale in-flight — or stolen —
-        // requests still arrive on the old id.
+        // A rotated-away row is valid only inside the grace window. Its `timestamp`
+        // is refreshed on every use, so inactivity GC never reaches it; without this
+        // bound an old, possibly stolen, id would stay valid forever. The real client
+        // has already moved to the new id via Set-Cookie.
         return $replaceAt === null || ($now - $replaceAt) <= $this->graceSeconds;
     }
 
     /**
      * `replace_at` as an int, or null when the row was never rotated (or the
-     * column does not exist on a legacy schema).
+     * column doesn't exist on an old schema).
      *
-     * Coerced via is_numeric()/cast rather than is_int(): under PDO
-     * ATTR_EMULATE_PREPARES=true the INT column comes back as a STRING, so an
-     * is_int() check would yield null and silently DISABLE the grace-period
-     * expiry — letting a rotated-away/stolen old sid stay valid indefinitely.
-     * A numeric string is honoured either way.
+     * Uses is_numeric() and a cast rather than is_int(): with emulated prepares
+     * PDO returns INT columns as strings, and treating that as null would switch
+     * the grace-period expiry off.
      *
      * @param array<string,mixed> $row
      */
@@ -401,10 +372,10 @@ final class SecureSessionHandler implements
     }
 
     /**
-     * Mark a session row as replaced by a successor, enabling the grace-period
-     * handover window for in-flight requests that still carry the old session ID.
+     * Mark a session row as replaced by its successor, which opens the grace
+     * period for in-flight requests still carrying the old id.
      *
-     * Called by ContentManager immediately after session_regenerate_id().
+     * Called right after session_regenerate_id().
      *
      * @param string $oldHashedId  hashId() of the old session ID.
      * @param string $newHashedId  hashId() of the new session ID.
