@@ -37,7 +37,7 @@ use AstrX\Support\ResourceRoots;
  * A DISABLED module is never instantiated beyond its manifest — its
  * `nav_defaults` are merged instead.
  *
- * @phpstan-type Manifest array{key:string,name:string,version:string,nav:?string,nav_defaults:array<string,mixed>,guards:list<string>,policies:array<string,string>,controllers:array<string,string>,permissions:list<string>,teardown:?string,resources:?string,extensions:array<string,list<string>>,layout:array<string,list<string>>}
+ * @phpstan-type Manifest array{key:string,name:string,version:string,nav:?string,nav_defaults:array<string,mixed>,guards:list<string>,policies:array<string,string>,controllers:array<string,string>,permissions:list<string>,teardown:?string,resources:?string,extensions:array<string,list<string>>,layout:array<string,list<string>>,nav_section:array<string,string>}
  */
 final class ModuleRegistry
 {
@@ -272,6 +272,25 @@ final class ModuleRegistry
             }
         }
         return $out;
+    }
+
+    /**
+     * The menu entry a page belongs under, by the page entry's file_name, when
+     * an ENABLED module says so in its manifest (`nav_section`: page file_name
+     * => entry file_name), else ''. The navbar lights that entry while the
+     * page is open: the torrent search's pages sit under Search.
+     */
+    public function navSection(string $fileName): string
+    {
+        if ($fileName === '') {
+            return '';
+        }
+        foreach ($this->manifests() as $m) {
+            if (isset($m['nav_section'][$fileName]) && $this->enabled($m['key'])) {
+                return $m['nav_section'][$fileName];
+            }
+        }
+        return '';
     }
 
     /**
@@ -534,6 +553,15 @@ final class ModuleRegistry
             }
         }
 
+        $navSection = [];
+        if (isset($raw['nav_section']) && is_array($raw['nav_section'])) {
+            foreach ($raw['nav_section'] as $page => $entry) {
+                if (is_string($page) && $page !== '' && is_string($entry) && $entry !== '') {
+                    $navSection[$page] = $entry;
+                }
+            }
+        }
+
         /** @var array<string,mixed> $navDefaults */
         return [
             'key'          => $raw['key'],
@@ -549,6 +577,7 @@ final class ModuleRegistry
             'resources'    => $resources,
             'extensions'   => $extensions,
             'layout'       => $layout,
+            'nav_section'  => $navSection,
         ];
     }
 
