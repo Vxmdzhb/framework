@@ -42,3 +42,8 @@ composer require astrx/framework:dev-main
 
 Issues and pull requests are welcome here. [AstrX](https://github.com/Vxmdzhb/astrx)
 is the site that puts all the packages together.
+
+## License
+
+Released under the [Do Whatever License](LICENSE), with a code of conduct
+in the same spirit: [CODE_OF_CONDUCT](CODE_OF_CONDUCT).

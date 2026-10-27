@@ -1,6 +1,7 @@
 {
     "name": "astrx/framework",
     "description": "AstrX framework: results and diagnostics, configuration, injection, HTTP, routing, templates, translation, sessions and the module contract",
+    "license": "LicenseRef-DoWhatever",
     "type": "library",
     "keywords": [
         "astrx",
