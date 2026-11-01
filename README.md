@@ -1,5 +1,10 @@
 # astrx/framework
 
+> **Archived.** This package is now one package per component: [`astrx/result`](https://github.com/Vxmdzhb/result), [`astrx/support`](https://github.com/Vxmdzhb/support), [`astrx/config`](https://github.com/Vxmdzhb/config), [`astrx/injector`](https://github.com/Vxmdzhb/injector), [`astrx/http`](https://github.com/Vxmdzhb/http), [`astrx/routing`](https://github.com/Vxmdzhb/routing), [`astrx/i18n`](https://github.com/Vxmdzhb/i18n), [`astrx/error-handler`](https://github.com/Vxmdzhb/error-handler), [`astrx/template`](https://github.com/Vxmdzhb/template), [`astrx/session`](https://github.com/Vxmdzhb/session), [`astrx/csrf`](https://github.com/Vxmdzhb/csrf), [`astrx/module`](https://github.com/Vxmdzhb/module), [`astrx/pagination`](https://github.com/Vxmdzhb/pagination), [`astrx/kernel`](https://github.com/Vxmdzhb/kernel).
+> Each one has its own repository, with its part of this repository's
+> history. Require the ones your code uses instead of `astrx/framework`; existing
+> lockfiles that pin a commit of this repository keep working.
+
 The foundation of [AstrX](https://github.com/Vxmdzhb/astrx), a framework for
 server-rendered sites that work without JavaScript:
 
