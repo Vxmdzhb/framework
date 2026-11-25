@@ -67,6 +67,10 @@ abstract class AbstractController implements Controller
         $suffix = $processor($prgToken);
         $qs     = is_string($suffix) ? $suffix : '';
 
+        if (str_starts_with($qs, '?') && str_contains($selfUrl, '?')) {
+            $qs = '&' . substr($qs, 1);
+        }
+
         Response::redirect($selfUrl . $qs)
             ->send()->drainTo($this->collector);
         exit;
